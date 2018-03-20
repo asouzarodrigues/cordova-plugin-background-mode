@@ -23,28 +23,40 @@ package de.appplant.cordova.plugin.background;
 
 import android.annotation.TargetApi;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
-import io.ionic.starter.MainActivity;
+
 
 import org.json.JSONObject;
 
 import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
 
 /**
+troque aqui pelo pacote do seu app IONIC!! Mas o nome da Activity mantém
+ */
+import com.easier123.drx.MainActivity;
+
+/**
  * Puts the service in a foreground state, where the system considers it to be
  * something the user is actively aware of and thus not a candidate for killing
  * when low on memory.
  */
+
+
 public class ForegroundService extends Service {
+
+    NotificationManager notificationManager;
+    String NOTIFICATION_CHANNEL_ID = "my_channel_id_01";
 
     // Fixed ID for the 'foreground' notification
     public static final int NOTIFICATION_ID = -574543954;
@@ -93,6 +105,8 @@ public class ForegroundService extends Service {
     @Override
     public void onCreate () {
         super.onCreate();
+        notificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         keepAwake();
     }
 
@@ -157,17 +171,41 @@ public class ForegroundService extends Service {
         String title    = settings.optString("title", NOTIFICATION_TITLE);
         String text     = settings.optString("text", NOTIFICATION_TEXT);
         boolean bigText = settings.optBoolean("bigText", false);
-
+        String hex      = settings.optString("color", null);
+        int aRGB = Integer.parseInt(hex, 16) + 0xFF000000;
         Context context = getApplicationContext();
         String pkgName  = context.getPackageName();
         Intent intent   = context.getPackageManager()
                 .getLaunchIntentForPackage(pkgName);
 
-        Notification.Builder notification = new Notification.Builder(context)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setOngoing(true)
-                .setSmallIcon(getIconResId(settings));
+        Notification.Builder notification;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "My Notifications", NotificationManager.IMPORTANCE_LOW);
+
+            // Configure the notification channel.
+            notificationChannel.setDescription("text");
+            notificationChannel.enableLights(true);
+            notificationChannel.setLightColor(aRGB);
+            notificationChannel.setVibrationPattern(new long[]{0, 1000, 500, 1000});
+            notificationChannel.enableVibration(false);
+            getNotificationManager().createNotificationChannel(notificationChannel);
+             notification = new Notification.Builder(context,NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle(title)
+                    .setContentText(text)
+                    .setOngoing(true)
+                    .setSmallIcon(getIconResId(settings));
+        }
+        else{
+             notification = new Notification.Builder(context)
+                    .setContentTitle(title)
+                    .setContentText(text)
+                    .setOngoing(true)
+                    .setSmallIcon(getIconResId(settings));
+        }
+
+
+
 
         if (settings.optBoolean("hidden", true)) {
             notification.setPriority(Notification.PRIORITY_MIN);
@@ -282,7 +320,7 @@ public class ForegroundService extends Service {
      * Shared manager for the notification service.
      */
     private NotificationManager getNotificationManager() {
-        return (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        return notificationManager;
     }
 
 }
